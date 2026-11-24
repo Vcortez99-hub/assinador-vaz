@@ -196,9 +196,7 @@ $('#form').addEventListener('submit', async e => {
     const glyph = mode === 'pick' ? await makeGlyph(STYLES[pick], shortName(s.name)) : null;
     const strokes = mode === 'draw' ? pad.strokes : [];
     S.out = await SignEngine.sign(S.bytes, [{ page: s.page, x: s.x, y: s.y, w: s.w, h: s.h, strokes, glyph, name: s.name, cpf, when, code, at, watermark: 'VAZ',
-      contents: `Assinado eletronicamente por ${s.name}, CPF ${cpf}, em ${when}, pelo link pessoal enviado por ${(S.pkg.from && S.pkg.from.name) || 'remetente'}. Código ${code}. SHA-256 do PDF original: ${S.pkg.hash}. Navegador: ${ua}. Assinador Vaz.` }],
-      { certificate: { title: S.pkg.title, fileName: S.pkg.fileName, from: S.pkg.from && S.pkg.from.name, hash: S.pkg.hash, generated: when,
-        signers: [{ name: s.name, cpf, role: s.role, when, code, strokes, glyph, ua }] } });
+      contents: `Assinado eletronicamente por ${s.name}, CPF ${cpf}, em ${when}, pelo link pessoal enviado por ${(S.pkg.from && S.pkg.from.name) || 'remetente'}. Código ${code}. SHA-256 do PDF original: ${S.pkg.hash}. Navegador: ${ua}. Assinador Vaz.` }]);
     S.fileName = `${S.pkg.title.replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 90)} - assinado por ${s.name.split(' ')[0]}.pdf`;
     $('#dlgWrap').hidden = true; $('#dock').hidden = true; $('#vSign').hidden = true; $('#vDone').hidden = false; scrollTo(0, 0);
     showDone(code, when);
