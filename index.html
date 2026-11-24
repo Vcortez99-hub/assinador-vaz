@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Assinador Vaz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lib/style.css">
+</head>
+<body>
+<header class="top"><div class="in">
+  <a class="brand" href="./">
+    <svg class="seal" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="2 2.6"/><circle cx="20" cy="20" r="13" fill="#fff"/><path d="M12 22c3-6 5-9 6-6s-1 7 2 4 4-8 6-5 1 5 3 3" fill="none" stroke="#14245f" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <div><b>Assinador Vaz</b><span>Assinatura eletrônica de documentos</span></div>
+  </a>
+</div></header>
+<main>
+  <div class="notice" id="notice" role="status" hidden></div>
+
+  <section id="vHome" hidden>
+    <h1>Assine documentos pelo link</h1>
+    <p class="lead">Quem recebe um link do Assinador Vaz lê o documento, confirma o CPF, desenha a rubrica e devolve o PDF assinado. Não precisa de cadastro nem de aplicativo.</p>
+    <a class="btn" href="preparar.html">Preparar um documento</a>
+  </section>
+
+  <section id="vSign" hidden>
+    <h1 id="title"></h1>
+    <p class="lead" id="lead"></p>
+    <div class="grid">
+      <div class="doc" id="doc"><p class="muted">Abrindo o documento…</p></div>
+      <div class="side">
+        <div class="card">
+          <h3>Sua assinatura</h3>
+          <b id="who" style="color:var(--ink)"></b>
+          <div class="muted" id="whoRole"></div>
+          <ol class="steps">
+            <li>Leia o documento inteiro.</li>
+            <li>Confirme seu CPF e desenhe sua rubrica.</li>
+            <li>Envie o PDF assinado de volta.</li>
+          </ol>
+          <button class="btn wide" id="go" style="margin-top:14px" disabled>Assinar documento</button>
+        </div>
+        <div class="card muted" id="integrity"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="vDone" hidden>
+    <div class="done">
+      <div class="check"><svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h1>Documento assinado</h1>
+      <p class="lead" id="doneLead" style="margin:0"></p>
+      <div class="rowb">
+        <button class="btn" id="share" hidden>Enviar PDF assinado</button>
+        <button class="btn" id="dl">Baixar PDF assinado</button>
+        <a class="btn ghost" id="mail" hidden>Enviar por e-mail</a>
+      </div>
+      <p class="muted" id="doneHint" style="margin:0"></p>
+      <div class="doc" id="donePg"></div>
+    </div>
+  </section>
+</main>
+
+<div class="dock" id="dock" hidden><button class="btn wide" id="go2">Assinar documento</button></div>
+
+<div class="scrim" id="dlgWrap" hidden>
+  <form class="dlg" id="form" novalidate>
+    <h2>Assinar documento</h2>
+    <div><div class="muted">Você assina como</div><b id="sName"></b><div class="muted" id="sRole"></div></div>
+    <label class="f">Confirme seu CPF<input inputmode="numeric" id="cpf" autocomplete="off" placeholder="000.000.000-00" maxlength="14"></label>
+    <div>
+      <div class="rowb" style="justify-content:space-between"><span style="font-weight:600;color:var(--ink);font-size:14px">Sua rubrica</span><button type="button" class="link" id="clear">Limpar</button></div>
+      <div class="pad"><canvas id="pad"></canvas><div class="base"></div><div class="hint" id="hint">Desenhe com o dedo ou o mouse</div></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="ok"><span>Li o documento e concordo em assiná-lo eletronicamente, com meu nome, CPF, data e hora registrados no PDF.</span></label>
+    <p class="err" id="err"></p>
+    <div class="rowb" style="justify-content:flex-end"><button type="button" class="btn ghost" id="cancel">Cancelar</button><button class="btn" id="sign">Assinar</button></div>
+  </form>
+</div>
+
+<script src="lib/pdf.min.js"></script>
+<script src="lib/pdf.worker.min.js"></script>
+<script src="lib/pdf-lib.min.js"></script>
+<script src="lib/engine.js"></script>
+<script src="lib/common.js"></script>
+<script>
+{
+const { $, el } = AV;
+const S = { pkg: null, bytes: null, out: null, fileName: '', id: '' };
+const pad = AV.makePad($('#pad'), $('#hint'));
+AV.cpfInput($('#cpf'));
+
+function rawUrl(id) {
+  const host = location.hostname, seg = location.pathname.split('/').filter(Boolean)[0];
+  const m = /^([^.]+)\.github\.io$/i.exec(host);
+  return m && seg ? `https://raw.githubusercontent.com/${m[1]}/${seg}/main/e/${id}.bin` : null;
+}
+function fail(t) { const n = $('#notice'); n.textContent = t; n.className = 'notice bad'; n.hidden = false; $('#vSign').hidden = true; }
+
+async function load() {
+  const m = /^#([a-z0-9]{6,24})\.([A-Za-z0-9_-]{40,})$/.exec(location.hash);
+  if (!m) { $('#vHome').hidden = false; return; }
+  const [, id, key] = m; S.id = id;
+  $('#vSign').hidden = false;
+  let res = await fetch(`e/${id}.bin`, { cache: 'no-store' }).catch(() => null);
+  if ((!res || !res.ok) && rawUrl(id)) res = await fetch(rawUrl(id), { cache: 'no-store' }).catch(() => null);
+  if (!res || !res.ok) return fail('Este link não foi encontrado. Ele pode ter sido removido ou ainda estar sendo publicado; tente de novo em um minuto.');
+  let pkg;
+  try { pkg = await AV.open(new Uint8Array(await res.arrayBuffer()), key); }
+  catch { return fail('Não foi possível abrir este documento. Confira se o link foi copiado inteiro.'); }
+  S.pkg = pkg; S.bytes = AV.unb64(pkg.pdf);
+  const s = pkg.signer;
+  document.title = pkg.title + ' · Assinador Vaz';
+  $('#title').textContent = pkg.title;
+  $('#lead').textContent = `${pkg.from && pkg.from.name ? pkg.from.name + ' enviou este documento' : 'Documento enviado'} para assinatura de ${s.name}.`;
+  $('#who').textContent = s.name; $('#whoRole').textContent = [s.role, 'CPF ' + AV.maskCpf(s.cpf)].filter(Boolean).join(' · ');
+  const h = await AV.sha(S.bytes);
+  if (h !== pkg.hash) return fail('O documento não confere com o original. Não assine; peça um novo link.');
+  $('#integrity').textContent = `Documento íntegro: a impressão digital (SHA-256) confere com a do envio. ${h.slice(0, 16)}…`;
+  try {
+    const pages = await AV.renderPdf(S.bytes, $('#doc'));
+    AV.boxes($('#doc'), pages, [s]);
+  } catch { return fail('Não foi possível exibir o PDF neste navegador.'); }
+  $('#go').disabled = false; $('#dock').hidden = false;
+}
+
+function openDlg() {
+  const s = S.pkg.signer;
+  $('#sName').textContent = s.name; $('#sRole').textContent = s.role || '';
+  $('#err').textContent = ''; $('#dlgWrap').hidden = false; requestAnimationFrame(pad.size); $('#cpf').focus();
+}
+$('#go').onclick = openDlg; $('#go2').onclick = openDlg;
+$('#cancel').onclick = () => { $('#dlgWrap').hidden = true; };
+$('#clear').onclick = () => pad.clear();
+$('#cpf').addEventListener('input', () => $('#err').textContent = '');
+addEventListener('resize', () => { if (!$('#dlgWrap').hidden) pad.size(); });
+$('#dlgWrap').addEventListener('keydown', e => { if (e.key === 'Escape') $('#dlgWrap').hidden = true; });
+
+$('#form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const s = S.pkg.signer, err = $('#err');
+  if (AV.digits($('#cpf').value) !== s.cpf) { err.textContent = 'O CPF não confere com o cadastrado para esta assinatura.'; return; }
+  if (pad.points() < 8) { err.textContent = 'Desenhe sua rubrica no quadro.'; return; }
+  if (!$('#ok').checked) { err.textContent = 'Marque a confirmação para assinar.'; return; }
+  const b = $('#sign'); b.disabled = true; b.textContent = 'Assinando…'; err.textContent = '';
+  try {
+    const at = new Date().toISOString(), ua = navigator.userAgent.slice(0, 180);
+    const h = await AV.sha(new TextEncoder().encode([S.id, s.cpf, at, S.pkg.hash, ua].join('|')));
+    const code = (h.slice(0, 4) + '-' + h.slice(4, 8)).toUpperCase();
+    const when = AV.fmtWhen(at), cpf = AV.fmtCpf(s.cpf);
+    S.out = await SignEngine.sign(S.bytes, [{ page: s.page, x: s.x, y: s.y, w: s.w, h: s.h, strokes: pad.strokes, name: s.name, cpf, when, code, at, watermark: 'VAZ',
+      contents: `Assinado eletronicamente por ${s.name}, CPF ${cpf}, em ${when}, pelo link pessoal enviado por ${(S.pkg.from && S.pkg.from.name) || 'remetente'}. Código ${code}. SHA-256 do PDF original: ${S.pkg.hash}. Navegador: ${ua}. Assinador Vaz.` }]);
+    S.fileName = `${S.pkg.title.replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 90)} - assinado por ${s.name.split(' ')[0]}.pdf`;
+    $('#dlgWrap').hidden = true; $('#dock').hidden = true; $('#vSign').hidden = true; $('#vDone').hidden = false; scrollTo(0, 0);
+    showDone(code, when);
+  } catch (x) { err.textContent = 'Não foi possível assinar: ' + (x && x.message || 'erro desconhecido'); }
+  finally { b.disabled = false; b.textContent = 'Assinar'; }
+});
+
+let sent = false;
+addEventListener('beforeunload', e => { if (S.out && !sent) { e.preventDefault(); e.returnValue = ''; } });
+async function showDone(code, when) {
+  const from = S.pkg.from || {};
+  $('#doneLead').textContent = `Assinado em ${when}. Código de verificação ${code}. Agora envie o PDF assinado ${from.name ? 'para ' + from.name : 'de volta a quem te mandou o link'}.`;
+  const file = new File([S.out], S.fileName, { type: 'application/pdf' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    const sh = $('#share'); sh.hidden = false;
+    sh.onclick = async () => { try { await navigator.share({ files: [file], title: S.pkg.title, text: 'Segue o documento assinado.' }); sent = true; } catch { } };
+  }
+  $('#dl').onclick = () => { AV.save(S.out, S.fileName); sent = true; };
+  if (from.email) {
+    const m = $('#mail'); m.hidden = false;
+    m.href = `mailto:${encodeURIComponent(from.email)}?subject=${encodeURIComponent('Assinado: ' + S.pkg.title)}&body=${encodeURIComponent('Segue em anexo o documento assinado (código ' + code + ').')}`;
+    $('#doneHint').textContent = `Pelo e-mail, baixe o PDF primeiro e anexe à mensagem para ${from.email}.`;
+  }
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: S.out.slice(), isEvalSupported: false }).promise;
+    const pg = await pdf.getPage(S.pkg.signer.page + 1), v1 = pg.getViewport({ scale: 1 });
+    const host = $('#donePg'), wrap = el('div', 'pg'), cv = document.createElement('canvas');
+    wrap.style.aspectRatio = `${v1.width} / ${v1.height}`; wrap.append(cv); host.replaceChildren(wrap);
+    const vp = pg.getViewport({ scale: Math.max(1, host.clientWidth / v1.width) * Math.min(2, devicePixelRatio || 1) });
+    cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+    await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+  } catch { }
+}
+addEventListener('hashchange', () => location.reload());
+load().catch(() => fail('Não foi possível abrir este documento.'));
+}
+</script>
+</body>
+</html>
