@@ -71,8 +71,18 @@
     <div><div class="muted">Você assina como</div><b id="sName"></b><div class="muted" id="sRole"></div></div>
     <label class="f">Confirme seu CPF<input inputmode="numeric" id="cpf" autocomplete="off" placeholder="000.000.000-00" maxlength="14"></label>
     <div>
-      <div class="rowb" style="justify-content:space-between"><span style="font-weight:600;color:var(--ink);font-size:14px">Sua rubrica</span><button type="button" class="link" id="clear">Limpar</button></div>
-      <div class="pad"><canvas id="pad"></canvas><div class="base"></div><div class="hint" id="hint">Desenhe com o dedo ou o mouse</div></div>
+      <div class="tabs" role="tablist" aria-label="Como assinar">
+        <button type="button" role="tab" class="tab on" id="tDraw" aria-selected="true">Desenhar</button>
+        <button type="button" role="tab" class="tab" id="tPick" aria-selected="false">Escolher pronta</button>
+      </div>
+      <div id="pDraw">
+        <div class="rowb" style="justify-content:space-between"><span style="font-weight:600;color:var(--ink);font-size:14px">Sua rubrica</span><button type="button" class="link" id="clear">Limpar</button></div>
+        <div class="pad"><canvas id="pad"></canvas><div class="base"></div><div class="hint" id="hint">Desenhe com o dedo ou o mouse</div></div>
+      </div>
+      <div id="pPick" hidden>
+        <p class="muted" style="margin:0 0 8px">Prefere não desenhar? Escolha um estilo com o seu nome.</p>
+        <div class="styles" id="styles"></div>
+      </div>
     </div>
     <label class="chk"><input type="checkbox" id="ok"><span>Li o documento e concordo em assiná-lo eletronicamente, com meu nome, CPF, data e hora registrados no PDF.</span></label>
     <p class="err" id="err"></p>
@@ -84,6 +94,7 @@
 <script src="lib/pdf.worker.min.js"></script>
 <script src="lib/pdf-lib.min.js"></script>
 <script src="lib/engine.js"></script>
+<script src="lib/opentype.min.js"></script>
 <script src="lib/common.js"></script>
 <script>
 {
@@ -126,9 +137,40 @@ async function load() {
   $('#go').disabled = false; $('#dock').hidden = false;
 }
 
+const STYLES = [
+  { fam: 'Sig1', file: 'HerrVonMuellerhoff-Regular.ttf', size: 44 },
+  { fam: 'Sig2', file: 'AlexBrush-Regular.ttf', size: 36 },
+  { fam: 'Sig3', file: 'MrsSaintDelafield-Regular.ttf', size: 44 },
+  { fam: 'Sig4', file: 'LaBelleAurore.ttf', size: 30 },
+];
+let mode = 'draw', pick = null;
+const shortName = n => { const p = n.trim().split(/\s+/); return p.length > 1 ? p[0] + ' ' + p[p.length - 1] : p[0]; };
+function setMode(m) {
+  mode = m;
+  $('#tDraw').classList.toggle('on', m === 'draw'); $('#tDraw').setAttribute('aria-selected', m === 'draw');
+  $('#tPick').classList.toggle('on', m === 'pick'); $('#tPick').setAttribute('aria-selected', m === 'pick');
+  $('#pDraw').hidden = m !== 'draw'; $('#pPick').hidden = m !== 'pick'; $('#err').textContent = '';
+  if (m === 'draw') requestAnimationFrame(pad.size);
+}
+$('#tDraw').onclick = () => setMode('draw'); $('#tPick').onclick = () => setMode('pick');
+function buildStyles() {
+  const host = $('#styles'), text = shortName(S.pkg.signer.name); host.replaceChildren();
+  STYLES.forEach((st, i) => {
+    const b = el('button', 'sty', text); b.type = 'button'; b.style.fontFamily = `${st.fam}, cursive`; b.style.fontSize = st.size + 'px';
+    b.setAttribute('aria-pressed', pick === i); b.setAttribute('aria-label', 'Estilo ' + (i + 1));
+    b.onclick = () => { pick = i; host.querySelectorAll('.sty').forEach((x, j) => x.setAttribute('aria-pressed', j === i)); $('#err').textContent = ''; };
+    host.append(b);
+  });
+}
+async function makeGlyph(st, text) {
+  const buf = await fetch('lib/fonts/' + st.file).then(r => { if (!r.ok) throw new Error('fonte indisponível'); return r.arrayBuffer(); });
+  const p = opentype.parse(buf).getPath(text, 0, 0, 100), b = p.getBoundingBox();
+  return { d: p.toPathData(2), bbox: [b.x1, b.y1, b.x2, b.y2], font: st.file };
+}
 function openDlg() {
   const s = S.pkg.signer;
   $('#sName').textContent = s.name; $('#sRole').textContent = s.role || '';
+  buildStyles(); setMode(mode);
   $('#err').textContent = ''; $('#dlgWrap').hidden = false; requestAnimationFrame(pad.size); $('#cpf').focus();
 }
 $('#go').onclick = openDlg; $('#go2').onclick = openDlg;
@@ -142,7 +184,8 @@ $('#form').addEventListener('submit', async e => {
   e.preventDefault();
   const s = S.pkg.signer, err = $('#err');
   if (AV.digits($('#cpf').value) !== s.cpf) { err.textContent = 'O CPF não confere com o cadastrado para esta assinatura.'; return; }
-  if (pad.points() < 8) { err.textContent = 'Desenhe sua rubrica no quadro.'; return; }
+  if (mode === 'draw' && pad.points() < 8) { err.textContent = 'Desenhe sua rubrica no quadro ou escolha uma pronta.'; return; }
+  if (mode === 'pick' && pick == null) { err.textContent = 'Escolha um dos estilos.'; return; }
   if (!$('#ok').checked) { err.textContent = 'Marque a confirmação para assinar.'; return; }
   const b = $('#sign'); b.disabled = true; b.textContent = 'Assinando…'; err.textContent = '';
   try {
@@ -150,10 +193,12 @@ $('#form').addEventListener('submit', async e => {
     const h = await AV.sha(new TextEncoder().encode([S.id, s.cpf, at, S.pkg.hash, ua].join('|')));
     const code = (h.slice(0, 4) + '-' + h.slice(4, 8)).toUpperCase();
     const when = AV.fmtWhen(at), cpf = AV.fmtCpf(s.cpf);
-    S.out = await SignEngine.sign(S.bytes, [{ page: s.page, x: s.x, y: s.y, w: s.w, h: s.h, strokes: pad.strokes, name: s.name, cpf, when, code, at, watermark: 'VAZ',
+    const glyph = mode === 'pick' ? await makeGlyph(STYLES[pick], shortName(s.name)) : null;
+    const strokes = mode === 'draw' ? pad.strokes : [];
+    S.out = await SignEngine.sign(S.bytes, [{ page: s.page, x: s.x, y: s.y, w: s.w, h: s.h, strokes, glyph, name: s.name, cpf, when, code, at, watermark: 'VAZ',
       contents: `Assinado eletronicamente por ${s.name}, CPF ${cpf}, em ${when}, pelo link pessoal enviado por ${(S.pkg.from && S.pkg.from.name) || 'remetente'}. Código ${code}. SHA-256 do PDF original: ${S.pkg.hash}. Navegador: ${ua}. Assinador Vaz.` }],
       { certificate: { title: S.pkg.title, fileName: S.pkg.fileName, from: S.pkg.from && S.pkg.from.name, hash: S.pkg.hash, generated: when,
-        signers: [{ name: s.name, cpf, role: s.role, when, code, strokes: pad.strokes, ua }] } });
+        signers: [{ name: s.name, cpf, role: s.role, when, code, strokes, glyph, ua }] } });
     S.fileName = `${S.pkg.title.replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 90)} - assinado por ${s.name.split(' ')[0]}.pdf`;
     $('#dlgWrap').hidden = true; $('#dock').hidden = true; $('#vSign').hidden = true; $('#vDone').hidden = false; scrollTo(0, 0);
     showDone(code, when);
