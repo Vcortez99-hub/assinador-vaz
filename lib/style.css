@@ -4,29 +4,29 @@
    COLOUR and TYPE: tinta #14245f dominante, papel branco, vermelhão de carimbo só no que falta; Public Sans
    LAYOUT: faixa de tinta no topo; documento à esquerda e painel à direita; empilha no celular */
 :root{color-scheme:light dark;
-  --bg:light-dark(#ffffff,#0b1230);--ink:light-dark(#14245f,#e6eaff);--text:light-dark(#1b2133,#e6eaff);
-  --muted:light-dark(#5a627e,#9aa3c7);--tint:light-dark(#eef1fa,#141d45);--line:light-dark(#d6dbea,#27315f);
-  --band:light-dark(#14245f,#070c24);--stamp:light-dark(#c9381f,#ff7a5c);--card:light-dark(#ffffff,#101944);
-  --btn:light-dark(#14245f,#e6eaff);--btnt:light-dark(#ffffff,#0b1230)}
+  --bg:light-dark(#F7F6F2,#14161F);--ink:light-dark(#14161F,#F7F6F2);--text:light-dark(#14161F,#F7F6F2);
+  --muted:light-dark(#5B5E6B,#A3A6B3);--tint:light-dark(#ECEEFB,#1F2340);--line:light-dark(#E3E1D9,#2E3140);
+  --band:#2B36C9;--stamp:light-dark(#B3261E,#FF8A80);--card:light-dark(#FFFFFF,#1B1E2A);
+  --btn:#2B36C9;--btnt:#FFFFFF;--accent:#FFC83D}
 *{box-sizing:border-box;min-width:0}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 "Public Sans",system-ui,sans-serif;overflow-x:clip}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
 button,input{font:inherit}
-.top{background:var(--band);color:#fff;padding:18px max(5vw,16px)}
+.top{background:var(--band);color:#fff;padding:18px max(5vw,16px);border-bottom:4px solid var(--accent)}
 .top .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:12px;margin-right:auto;color:#fff;text-decoration:none}
 .seal{width:40px;height:40px;flex:none}
 .brand b{font-size:20px;font-weight:700;display:block;line-height:1.1}
 .brand span{font-size:13px;opacity:.75}
 main{max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,40px) max(5vw,16px) 96px}
-h1,h2{font-weight:700;line-height:1.1;text-wrap:balance;margin:0;color:var(--ink)}
+h1,h2{font-family:Archivo,Inter,sans-serif;font-weight:700;line-height:1.1;text-wrap:balance;margin:0;color:var(--ink)}
 h1{font-size:clamp(28px,4vw,40px)}h2{font-size:clamp(22px,3vw,30px)}
 .lead{color:var(--muted);margin:8px 0 24px}
 .btn{min-height:44px;padding:10px 18px;border-radius:10px;border:1.5px solid var(--btn);background:var(--btn);color:var(--btnt);font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
-.btn.light{background:#fff;color:#14245f;border-color:#fff}
+.btn.light{background:#fff;color:#2B36C9;border-color:#fff}
 .btn.wide{width:100%}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.btn:focus-visible,input:focus-visible,label.drop:focus-within,.link:focus-visible{outline:3px solid var(--stamp);outline-offset:2px}
+.btn:focus-visible,input:focus-visible,label.drop:focus-within,.link:focus-visible{outline:3px solid #FFC83D;outline-offset:2px}
 .link{background:none;border:0;color:var(--ink);font-weight:600;cursor:pointer;padding:10px 0;min-height:44px}
 .notice{border:1.5px solid var(--line);border-radius:12px;padding:16px 18px;background:var(--tint);margin-bottom:20px}
 .notice.bad{border-color:var(--stamp);color:var(--stamp);font-weight:600}
@@ -41,7 +41,7 @@ h1{font-size:clamp(28px,4vw,40px)}h2{font-size:clamp(22px,3vw,30px)}
 .pg canvas{display:block;width:100%;height:100%}
 .ov{position:absolute;inset:0}
 .placing .pg{cursor:crosshair}
-.box{position:absolute;border:1.5px dashed #c9381f;background:#c9381f14;border-radius:4px;display:flex;align-items:flex-end;padding:2px 4px;font:600 clamp(8px,1.2vw,11px)/1.15 "Public Sans",sans-serif;color:#c9381f;overflow:hidden}
+.box{position:absolute;border:1.5px dashed #2B36C9;background:#FFC83D4d;border-radius:4px;display:flex;align-items:flex-end;padding:2px 4px;font:600 clamp(8px,1.2vw,11px)/1.15 Inter,sans-serif;color:#232CA6;overflow:hidden}
 .box .bl{margin-left:auto;max-width:60%}
 .muted{color:var(--muted);font-size:14px}
 .err{color:var(--stamp);font-size:14px;font-weight:600;min-height:1em;margin:0}
@@ -50,9 +50,9 @@ input[type=text],input[type=email],input[type=password],input[inputmode]{width:1
 label.drop{position:relative;display:grid;place-items:center;text-align:center;gap:6px;border:2px dashed var(--line);border-radius:14px;padding:36px 16px;cursor:pointer;background:var(--tint);color:var(--ink);font-weight:600}
 label.drop input{position:absolute;opacity:0;width:1px;height:1px}
 .chk{display:flex;gap:10px;align-items:flex-start;font-size:15px;cursor:pointer}
-.chk input{width:22px;height:22px;flex:none;margin-top:1px;accent-color:#14245f}
+.chk input{width:22px;height:22px;flex:none;margin-top:1px;accent-color:#2B36C9}
 .rowb{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.banner{position:sticky;top:0;z-index:5;background:var(--stamp);color:#fff;padding:12px 16px;border-radius:10px;font-weight:600;display:flex;gap:12px;align-items:center;justify-content:space-between}
+.banner{position:sticky;top:0;z-index:5;background:#2B36C9;color:#fff;padding:12px 16px;border-radius:10px;font-weight:600;display:flex;gap:12px;align-items:center;justify-content:space-between}
 .scrim{position:fixed;inset:0;background:#070c24b3;display:grid;place-items:center;padding:16px;z-index:20}
 .dlg{background:var(--bg);border-radius:16px;max-width:520px;width:100%;max-height:calc(100vh - 32px);overflow:auto;padding:22px;display:grid;gap:14px}
 .pad{position:relative;border:1.5px solid var(--line);border-radius:12px;background:#fff;touch-action:none}
@@ -64,7 +64,7 @@ label.drop input{position:absolute;opacity:0;width:1px;height:1px}
 .dock{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1.5px solid var(--line);padding:12px max(5vw,16px) calc(12px + env(safe-area-inset-bottom));z-index:10;display:none}
 @media(max-width:900px){.dock{display:block}}
 .done{display:grid;gap:16px;max-width:640px}
-.check{width:56px;height:56px;border-radius:50%;background:var(--ink);display:grid;place-items:center}
+.check{width:56px;height:56px;border-radius:50%;background:#2B36C9;box-shadow:0 0 0 5px #FFC83D;display:grid;place-items:center}
 .linkbox{font:14px/1.4 ui-monospace,monospace;background:var(--tint);border-radius:10px;padding:12px;overflow-wrap:anywhere}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:no-preference){.check{animation:pop .5s ease-out}@keyframes pop{from{transform:scale(.6);opacity:0}}}
